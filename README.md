@@ -1,15 +1,16 @@
 <div align="center">
 
-<pre>
+<pre style="background:#0d1117; color:#3fb950; padding:16px 22px; border-radius:8px; display:inline-block; text-align:center; line-height:1.25;">
  ____  ____  ____  ____  __  __  ____
 (  _ \(  _ \(  __)(  _ \(  \/  )(  __)
  ) __/ )   / ) _)  ) __/ )    (  ) _)
 (__)  (__\_)(____)(__)  (_/\/\_)(____)
 
-    +-------------------------------------------+
-    |  CV  +  JD   -->   [?]   [?]   [?]        |
-    |                     click -> copy -> done |
-    +-------------------------------------------+
+┌────────────────────────────────────────┐
+│ $ prepme  --  CV + JD loaded           │
+│ > your questions ready                 │
+│ > cracking the interview ........      │
+└────────────────────────────────────────┘
 </pre>
 
 </div>
