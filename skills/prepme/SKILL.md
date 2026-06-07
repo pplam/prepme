@@ -1,12 +1,12 @@
 ---
 name: prepme
 description: Generate a tailored set of likely interview questions from a candidate's resume (CV) and a job description (JD), output as an interactive HTML study sheet. Each question is clickable to copy an AI deep-dive prompt and mark itself as processed. Takes two file inputs — CV and JD; the output language is auto-detected from those documents. Trigger on "prepare interview questions", "interview prep", "mock interview questions", "prepme".
-allowed-tools: Bash Read Write
+allowed-tools: Bash Read Write Edit
 ---
 
 # Interview Preparation
 
-Turn a candidate's **resume (CV)** and a **job description (JD)** into a focused, interactive set of likely interview questions. The deliverable is a single self-contained HTML file the candidate studies from: every question is clickable to (1) copy a ready-to-paste AI prompt that requests a deep-dive analysis of that question, and (2) mark the question as processed so the candidate can track progress.
+Turn a candidate's **resume (CV)** and a **job description (JD)** into a focused, interactive set of likely interview questions. The deliverable is a single self-contained HTML file the candidate studies from: every question has a **Copy prompt** button that copies a ready-to-paste AI prompt that requests a deep-dive analysis of that question. A question is automatically marked **processed** once a saved answer exists for it (via the companion check-in action), so progress tracks questions the candidate has actually answered — not merely copied.
 
 The goal is **breadth of realistic coverage**, not a domain encyclopedia. The question set is built in **two distinct halves**: one driven by the **JD** (the common technical knowledge the role requires) and one driven by the **CV** (the candidate's actual projects and the technologies they claim). Keep these two halves separate — they are generated from different sources and probe different things.
 
@@ -101,7 +101,8 @@ Before generating, confirm in your own reasoning that every JD knowledge area is
        }
      ]
      ```
-   - `__UI__` — a JSON object of UI label strings in the target language (keys listed in the template's comment, e.g. progress/filter/copied labels). Translate each value.
+   - `__UI__` — a JSON object of UI label strings in the target language (keys listed in the template's comment, e.g. progress/filter/copied labels, plus `view_answer` and `answered` for checked-in answers). There is no `undo`/`reset` label — processed state is derived, not manually toggled. Translate each value.
+   - Don't create the `answers/` folder or any answer manifest at generation time. The template already loads `answers/answers.js` if it ever exists.
 3. Write the result to the user's working directory as `interview-prep.html` (or a name the user requested). Use the Write tool.
 4. Validate the JSON you inject is well-formed (no trailing commas, properly escaped quotes). Then tell the user the file path and a one-line summary (N questions across M categories).
 
@@ -118,14 +119,26 @@ It must include the tokens `{{QUESTION}}` (the question text) and `{{FOLLOWUPS}}
 
 ---
 
+## Answer files are out of scope
+
+This skill only generates the study sheet. **Do not create the `answers/` folder or any answer
+manifest at generation time.** The template you produce already loads `answers/answers.js` if it
+happens to exist and shows a **View answer** button for any answered question, but at generation
+time that file does not exist yet — and that is correct. A sheet generated with no answer manifest
+works fine; the manifest is simply absent (harmless). Populating answer pages is a separate action
+outside this skill.
+
+---
+
 ## HTML behavior (provided by the template — don't reimplement)
 
 The template already implements all interactivity; you only inject data. It provides:
 
-- **Clickable question cards.** Clicking a card copies the filled-in deep-dive prompt to the clipboard **and** toggles the card to a "processed" state (greyed/checked) so the candidate tracks what they've drilled. A small toast confirms "copied". A separate small control lets the user un-mark if they misclicked.
-- **Progress tracking.** A progress bar / counter shows processed vs total. State persists in `localStorage` (keyed per file) so progress survives reloads.
+- **Copy-prompt button.** Each question card has an explicit **Copy prompt** button that copies the filled-in deep-dive prompt to the clipboard. A small toast confirms "copied". Copying does **not** change the card's processed state. The rest of the card is not click-to-copy.
+- **Progress tracking.** A question is marked **processed** (greyed/checked) exactly when a saved answer exists for it in the manifest; the progress bar / counter shows answered vs total. This state is derived from the manifest on each load — there is no manual marking and nothing is stored in `localStorage`.
+- **Answered links.** The page loads a manifest at `answers/answers.js` (`window.PREPME_ANSWERS`, mapping question **id** → answer file, where the id is `qhash(question text)`). Any question whose id is listed there renders an "answered" accent and a **View answer** button right after *Copy prompt*. The manifest is absent until some later action creates it — a missing file is harmless (no links shown), and this skill never creates or edits it.
 - **Filters.** By category, by level, and a "hide processed" toggle.
-- **Self-contained.** No external network calls, no CDN, inline CSS+JS. Works by opening the file directly in a browser. Clipboard uses the async Clipboard API with a `document.execCommand('copy')` fallback for `file://`.
+- **Self-contained.** No network calls, no CDN; all CSS+JS is inline. Works by opening the file directly in a browser. The only optional companion is the local `answers/answers.js` manifest (loaded if present). Clipboard uses the async Clipboard API with a `document.execCommand('copy')` fallback for `file://`.
 
 If the template file is missing, recreate an equivalent self-contained HTML using the same placeholder contract.
 
@@ -138,5 +151,5 @@ If the template file is missing, recreate an equivalent self-contained HTML usin
 - JD-half questions are general, not obscure or company-internal trivia (Principle 1–2).
 - Difficulty matches the role level.
 - Follow-ups are realistic next-drill questions, not restatements.
-- The HTML opens and works offline; clicking copies a correct, language-correct prompt and marks processed.
+- The HTML opens and works offline; clicking copies a correct, language-correct prompt, and a question only shows as processed once it has a saved answer.
 - All visible text (questions, labels, prompt) is in the requested language.

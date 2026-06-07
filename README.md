@@ -56,6 +56,21 @@ prepme — CV: ~/Documents/resume.pdf   JD: ~/jobs/acme-backend.txt
 
 Out comes `interview-prep.html`. Open it. Start drilling. Try not to peek at the follow-ups first.
 
+### Logging your answers — `anslog`
+
+Once you've worked a question through with an AI agent and you're happy with the answer, ask your
+agent to **log** it:
+
+```
+log this answer   (or: "save this answer to my study sheet")
+```
+
+That fires the companion **anslog** skill, which writes a clean, self-contained answer page under
+`answers/` and links it back into your study sheet — the card flips to an *answered* state with a
+**View answer** button on reload. anslog only ever writes inside `answers/`; it never touches
+`interview-prep.html`, so links survive even if you regenerate the sheet. prepme writes the
+questions; anslog keeps the answers.
+
 ## Install
 
 Use the `skills` CLI:
@@ -66,6 +81,14 @@ npx skills add pplam/prepme
 
 This follows the standard `skills` install flow and lets the CLI guide skill and agent selection interactively.
 
+Or, for a local install straight from a clone:
+
+```bash
+./install.sh
+```
+
+Copies the skill into `~/.claude/skills/` (and `~/.codex/skills/` if Codex is set up).
+
 The installable skill lives under `skills/prepme/`, so the repository README stays at the repo root and is not part of the installed skill payload.
 
 ## What's inside
@@ -74,6 +97,9 @@ The installable skill lives under `skills/prepme/`, so the repository README sta
 |------|------|
 | `skills/prepme/SKILL.md` | The brains — how questions are designed and the HTML is assembled. |
 | `skills/prepme/assets/template.html` | The self-contained, light-themed study-sheet template. |
+| `skills/anslog/SKILL.md` | The **answer log** — saves a worked-out answer back into the study sheet. |
+| `skills/anslog/assets/answer.html` | Template for a saved-answer page (anslog fills it in). |
+| `install.sh` | Local installer — copies both skills into your skills directory. |
 
 ---
 
