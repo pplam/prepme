@@ -58,19 +58,22 @@ Out comes `interview-prep.html`. Open it. Start drilling. Try not to peek at the
 
 ## Install
 
+Use the `skills` CLI:
+
 ```bash
-./install.sh
+npx skills add pplam/prepme
 ```
 
-Copies the skill into `~/.claude/skills/` (and `~/.codex/skills/` if it finds one).
+This follows the standard `skills` install flow and lets the CLI guide skill and agent selection interactively.
+
+The installable skill lives under `skills/prepme/`, so the repository README stays at the repo root and is not part of the installed skill payload.
 
 ## What's inside
 
 | File | Role |
 |------|------|
-| `SKILL.md` | The brains — how questions are designed and the HTML is assembled. |
-| `assets/template.html` | The self-contained, light-themed study-sheet template. |
-| `install.sh` | Drops the skill into your skills directory. |
+| `skills/prepme/SKILL.md` | The brains — how questions are designed and the HTML is assembled. |
+| `skills/prepme/assets/template.html` | The self-contained, light-themed study-sheet template. |
 
 ---
 
