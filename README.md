@@ -40,7 +40,7 @@ A single **self-contained HTML file** — no server, no CDN, no "please wait whi
 
 - **Tree-structured layout** — questions branch into their follow-ups, so the "and then they'll ask…" chain is obvious at a glance.
 - **Click to copy** — one click drops a ready-to-paste, language-matched deep-dive prompt onto your clipboard (best answer, bonus points, follow-up handling, ASCII diagrams) for any chat AI.
-- **Progress tracking** — clicking also marks the card done; a progress bar and `localStorage` remember what you've drilled, so the page won't pretend you're starting fresh every reload.
+- **Answer-driven progress** — a card only flips to *done* once you've actually saved an answer for it (via `anslog`, below). The progress bar counts answered questions, so it reflects real understanding — not how many buttons you clicked.
 - **Filters** — by category, by difficulty, or hide everything you've already conquered.
 - **Speaks your language** — output language is auto-detected from your documents. Interview conducted in 中文? You get 中文, with the tech terms left mercifully untranslated.
 
@@ -70,6 +70,55 @@ That fires the companion **anslog** skill, which writes a clean, self-contained 
 **View answer** button on reload. anslog only ever writes inside `answers/`; it never touches
 `interview-prep.html`, so links survive even if you regenerate the sheet. prepme writes the
 questions; anslog keeps the answers.
+
+## The full loop
+
+Two skills, one feedback loop. **prepme** writes the questions; you drill each one with an AI;
+**anslog** files the answer back into the sheet — which is exactly what flips the card to *done*.
+
+```
+   you ──"prepme — CV + JD"──▶  ┌──────────┐
+                                │  prepme  │  designs the questions
+                                └────┬─────┘
+                                     ▼
+                          interview-prep.html
+                          (your study sheet)
+                                     │
+          ┌──────────────────────────┼──────────────────────────┐
+          ▼                          ▼                           ▼
+   [ Q: Kafka          ]     [ Q: your billing  ]        ...more questions
+   [   delivery sem... ]     [   service rewrite ]
+   [  [ ] not answered ]     [  [ ] not answered ]
+          │
+          │  1. click [Copy prompt]   ──▶  deep-dive prompt on clipboard
+          ▼
+   ┌───────────────┐   2. paste into any chat AI, discuss,
+   │   AI agent    │      sharpen the answer until you're happy
+   └───────┬───────┘
+           │  3. "log this answer"
+           ▼
+      ┌──────────┐   writes answers/<id>.html  +  updates answers/answers.js
+      │  anslog  │   (never edits interview-prep.html)
+      └────┬─────┘
+           │  4. reload the sheet
+           ▼
+   [ Q: Kafka          ]
+   [   delivery sem... ]
+   [  [x] answered     ]  ◀── card greys out, progress bar ticks up,
+   [  [View answer]    ]      and a View answer button appears
+```
+
+**At a glance:**
+
+| Step | You say / do | What happens |
+|------|--------------|--------------|
+| 1 | `prepme — CV: resume.pdf  JD: job.txt` | Generates `interview-prep.html` |
+| 2 | Click **Copy prompt** on a card | Deep-dive prompt copied to clipboard |
+| 3 | Paste into your AI agent, work the answer out | You get a strong, follow-up-proof answer |
+| 4 | `log this answer` | **anslog** saves the answer page + links it |
+| 5 | Reload `interview-prep.html` | Card shows **answered** + **View answer**; progress advances |
+
+Repeat 2–5 until the progress bar is full. That's the whole game.
 
 ## Install
 
