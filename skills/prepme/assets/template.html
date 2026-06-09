@@ -108,9 +108,10 @@
   .actions{display:flex;align-items:center;gap:10px;margin-top:11px;padding-left:18px}
   .copy-btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12.5px;font-weight:600;
     cursor:pointer;color:#fff;background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:6px 13px;
-    transition:filter .15s,background .15s}
+    transition:filter .15s,background .15s,color .15s,border-color .15s}
   .copy-btn:hover{filter:brightness(1.06)}
   .copy-btn:active{transform:translateY(.5px)}
+  .copy-btn.copied{color:var(--good);background:var(--good-weak);border-color:#bfe6c9;filter:none}
 
   .card.done{opacity:.7;border-style:dashed;background:var(--good-weak)}
   .card.done .node-dot{background:var(--good);box-shadow:0 0 0 3px var(--good-weak)}
@@ -257,7 +258,7 @@ function render(){
           `<button class="copy-btn" type="button">${esc(UI.copy||"Copy prompt")}</button>`+
           (answerFile?`<a class="ans-link" href="${esc(answerFile)}" target="_blank" rel="noopener">${esc(UI.view_answer||"View answer")}</a>`:``)+
         `</div>`;
-      card.querySelector(".copy-btn").addEventListener("click", ()=>{ copyPrompt(q); });
+      card.querySelector(".copy-btn").addEventListener("click", (e)=>{ copyPrompt(q, e.currentTarget); });
       node.appendChild(card);
       tree.appendChild(node);
     });
@@ -269,9 +270,9 @@ function buildPrompt(q){
   const fu = (q.followups||[]).map((f,i)=>`${i+1}. ${f}`).join("\n");
   return PROMPT_TEMPLATE.replace(/\{\{QUESTION\}\}/g, q.q).replace(/\{\{FOLLOWUPS\}\}/g, fu || "—");
 }
-function copyPrompt(q){
+function copyPrompt(q, btn){
   const text = buildPrompt(q);
-  const done = ()=>toast(UI.copied||"Copied to clipboard");
+  const done = ()=>{ toast(UI.copied||"Copied to clipboard"); if(btn) btn.classList.add("copied"); };
   if (navigator.clipboard && window.isSecureContext){
     navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
   } else { fallbackCopy(text, done); }
