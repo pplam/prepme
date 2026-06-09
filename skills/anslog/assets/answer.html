@@ -67,8 +67,8 @@
   .lvl.Core{color:var(--core);border-color:#f0dcae;background:#fbf3e0}
   .lvl.Advanced{color:var(--adv);border-color:#f3c2c2;background:#fdeaea}
 
-  /* root question card — a touch more prominent */
-  .card.root{border-left:3px solid var(--accent);padding:18px 20px}
+  /* root question card — a touch more prominent; no tree indent/mark */
+  .card.root{border-left:3px solid var(--accent);padding:18px 20px;margin-top:0}
   .card.root .q-text{font-size:18px;line-height:1.45}
   .card.root .qlabel{font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:9px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -111,18 +111,13 @@
 <div class="wrap">
   <a class="back" href="__SHEET__">&larr; __BACK__</a>
 
-  <div class="tree">
-    <div class="node">
-      <div class="card root">
-        <div class="qlabel">Q</div>
-        <div class="q-row">
-          <span class="node-dot"></span>
-          <span class="q-text">__QUESTION__</span>
-          <span class="lvl __LEVEL__">__LEVEL_LABEL__</span>
-        </div>
-        <div class="chips">__META__</div>
-      </div>
+  <div class="card root">
+    <div class="qlabel">Q</div>
+    <div class="q-row">
+      <span class="q-text">__QUESTION__</span>
+      <span class="lvl __LEVEL__">__LEVEL_LABEL__</span>
     </div>
+    <div class="chips">__META__</div>
   </div>
 
   <article class="answer">
