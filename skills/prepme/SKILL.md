@@ -6,7 +6,9 @@ allowed-tools: Bash Read Write Edit
 
 # Interview Preparation
 
-Turn a candidate's **resume (CV)** and a **job description (JD)** into a focused, interactive set of likely interview questions. The deliverable is a single self-contained HTML file the candidate studies from: every question has a **Copy prompt** button that copies a ready-to-paste AI prompt that requests a deep-dive analysis of that question. A question is automatically marked **processed** once a saved answer exists for it (via the companion check-in action), so progress tracks questions the candidate has actually answered — not merely copied.
+Turn a candidate's **resume (CV)** and a **job description (JD)** into a focused, interactive set of likely interview questions. The deliverable is a small offline study sheet the candidate opens in a browser: a fixed `index.html` shell that renders its content at runtime from a sibling **`questions.data.js`** data file you write. Every question has a **Copy prompt** button that copies a ready-to-paste AI prompt that requests a deep-dive analysis of that question. A question is automatically marked **processed** once a saved answer exists for it (via the companion **anslog** skill, which appends to `answer.data.js`), so progress tracks questions the candidate has actually answered — not merely copied.
+
+You generate **data, not HTML.** The `index.html` shell is copied verbatim (no tokens spent re-emitting CSS/JS); your only authored artifact is the `questions.data.js` data file.
 
 The goal is **breadth of realistic coverage**, not a domain encyclopedia. The question set is built in **two distinct halves**: one driven by the **JD** (the common technical knowledge the role requires) and one driven by the **CV** (the candidate's actual projects and the technologies they claim). Keep these two halves separate — they are generated from different sources and probe different things.
 
@@ -84,29 +86,51 @@ Spread across difficulty levels appropriate to the role level.
 
 Before generating, confirm in your own reasoning that every JD knowledge area is covered by a Set A question and every substantial CV project/technology is covered by a Set B question. The HTML's coverage summary has two columns — `coverage.jd` (the general knowledge areas from the JD) and `coverage.cv` (the projects/tech from the résumé) — fill each from the matching set. If a JD area can't be covered with a *general* question, note it briefly rather than inventing trivia.
 
-### Step 4 — Generate the HTML
+### Step 4 — Lay down the shell + write the question data
 
-1. Read the template at `assets/template.html` (in this skill's directory).
-2. Replace the placeholders:
-   - `__TITLE__` — e.g. "Interview Prep — <Role> — <Company>" in the target language. Use the company name and/or job title from the JD; **never** put the candidate's name in the title. If the company isn't stated in the JD, use just the role (e.g. "Interview Prep — <Role>").
-   - `__META__` — a JSON object: `{ "role": "...", "candidate": "...", "language": "...", "generated": "YYYY-MM-DD", "coverage": { "jd": ["req 1", "req 2", ...], "cv": ["area 1", ...] } }`. Strings in target language; use today's date.
-   - `__PROMPT_TEMPLATE__` — the deep-dive prompt **in the target language**, containing the literal tokens `{{QUESTION}}` and `{{FOLLOWUPS}}` where the question text and its follow-up list will be substituted at click time. See "The copy prompt" below for required content.
-   - `__DATA__` — a JSON array of category objects:
-     ```json
-     [
-       { "category": "Category name in target language",
-         "questions": [
-           { "q": "...", "level": "Core", "source": "...", "followups": ["...", "..."] }
-         ]
-       }
+You produce **two files in the user's working directory**: the static `index.html` shell (copied
+verbatim) and the `questions.data.js` data file (the only thing you author).
+
+1. **Copy the shell verbatim.** Copy `assets/index.html` (in this skill's directory) to the working
+   directory as `index.html` — e.g. with Bash `cp "<this-skill>/assets/index.html" ./index.html`.
+   **Do not** read its body or rewrite it; it carries no data and must stay byte-for-byte.
+2. **Write `questions.data.js`** next to it (Write tool). It must set a single global,
+   `window.PREPME_QUESTIONS`, to an object with these fields:
+   ```js
+   window.PREPME_QUESTIONS = {
+     title: "Interview Prep — <Role> — <Company>",   // target language; company/role from the JD.
+                                                      // NEVER the candidate's name. Role only if no company.
+     meta: { role: "...", candidate: "...", language: "...", generated: "YYYY-MM-DD",
+             coverage: { jd: ["req 1", "req 2", ...], cv: ["area 1", ...] } },
+     ui: { /* UI label strings, target language — see the label list below */ },
+     promptTemplate: "…deep-dive prompt with the literal tokens {{QUESTION}} and {{FOLLOWUPS}}…",
+     data: [
+       { category: "Category name in target language",
+         questions: [ { q: "...", level: "Core", source: "...", followups: ["...", "..."] } ] }
      ]
-     ```
-   - `__UI__` — a JSON object of UI label strings in the target language (keys listed in the template's comment, e.g. progress/filter/copied labels, plus `view_answer` and `answered` for checked-in answers). There is no `undo`/`reset` label — processed state is derived, not manually toggled. Translate each value.
-   - Don't create the `answers/` folder or any answer manifest at generation time. The template already loads `answers/answers.js` if it ever exists.
-3. Write the result to the user's working directory as `interview-prep.html` (or a name the user requested). Use the Write tool.
-4. Validate the JSON you inject is well-formed (no trailing commas, properly escaped quotes). Then tell the user the file path and a one-line summary (N questions across M categories).
+   };
+   ```
+   - `meta.generated` is today's date. All visible strings in the target language; keep tech
+     names/acronyms in their original form.
+   - `promptTemplate` is the copy prompt in the target language, containing the literal tokens
+     `{{QUESTION}}` and `{{FOLLOWUPS}}` (substituted per question at click time). See "The copy
+     prompt" below.
+   - `data` mirrors the question design from Steps 2–3 (JD categories first, then CV categories).
+   - `ui` keys (translate each value): `progress, of, processed, copy, copied, filter_category,
+     filter_level, all, hide_processed, why, followups, foundational, core, advanced, filter_jd,
+     filter_cv, footer, view_answer, answered, back, fu_handle, answer_footer`.
+     `progress` is a template like `"{done} of {total} processed"` (keep the `{done}`/`{total}`
+     tokens). `back`, `fu_handle`, `answer_footer` are used by the in-page answer view (the
+     Back-to-sheet label, the follow-ups heading, and the answer-page footer). There is no
+     `undo`/`reset` label — processed state is derived, not manually toggled.
+3. **Do not** create `answer.data.js` (the **anslog** skill appends it later) or any `answers/`
+   folder. `index.html` loads `answer.data.js` if it ever exists; until then its absence is a
+   harmless 404 and no "View answer" links show.
+4. Validate `questions.data.js` is well-formed (no trailing commas, properly escaped quotes). Then
+   tell the user the two file paths (`index.html`, `questions.data.js`) and a one-line summary
+   (N questions across M categories). The user opens `index.html` in a browser.
 
-### The copy prompt (`__PROMPT_TEMPLATE__`)
+### The copy prompt (`promptTemplate`)
 
 This is what gets copied to the clipboard when a question is clicked. Written in the target language, it must instruct an AI to deliver a **detailed analysis** of the question and must request all of:
 
@@ -121,26 +145,29 @@ It must include the tokens `{{QUESTION}}` (the question text) and `{{FOLLOWUPS}}
 
 ## Answer files are out of scope
 
-This skill only generates the study sheet. **Do not create the `answers/` folder or any answer
-manifest at generation time.** The template you produce already loads `answers/answers.js` if it
-happens to exist and shows a **View answer** button for any answered question, but at generation
-time that file does not exist yet — and that is correct. A sheet generated with no answer manifest
-works fine; the manifest is simply absent (harmless). Populating answer pages is a separate action
-outside this skill.
+This skill only writes the questions. **Do not create `answer.data.js` or any `answers/` folder.**
+The `index.html` shell already loads `answer.data.js` if it happens to exist and shows a **View
+answer** button for any answered question, but at generation time that file does not exist yet — and
+that is correct. A sheet generated with no answer data works fine; the file is simply absent
+(harmless 404). Populating answers is the **anslog** skill's job — it appends to `answer.data.js`.
 
 ---
 
-## HTML behavior (provided by the template — don't reimplement)
+## Behavior (provided by the `index.html` shell — don't reimplement)
 
-The template already implements all interactivity; you only inject data. It provides:
+The shell already implements all interactivity; you only provide data via `questions.data.js`. It:
 
-- **Copy-prompt button.** Each question card has an explicit **Copy prompt** button that copies the filled-in deep-dive prompt to the clipboard. A small toast confirms "copied". Copying does **not** change the card's processed state. The rest of the card is not click-to-copy.
-- **Progress tracking.** A question is marked **processed** (greyed/checked) exactly when a saved answer exists for it in the manifest; the progress bar / counter shows answered vs total. This state is derived from the manifest on each load — there is no manual marking and nothing is stored in `localStorage`.
-- **Answered links.** The page loads a manifest at `answers/answers.js` (`window.PREPME_ANSWERS`, mapping question **id** → answer file, where the id is `qhash(question text)`). Any question whose id is listed there renders an "answered" accent and a **View answer** button right after *Copy prompt*. The manifest is absent until some later action creates it — a missing file is harmless (no links shown), and this skill never creates or edits it.
+- Loads `questions.data.js` (`window.PREPME_QUESTIONS`, required) and `answer.data.js`
+  (`window.PREPME_ANSWERS`, optional) via `<script src>` — offline-safe on `file://`.
+- **Copy-prompt button.** Each question card has an explicit **Copy prompt** button that copies the filled-in deep-dive prompt to the clipboard. A small toast confirms "copied". Copying does **not** change the card's processed state.
+- **Progress tracking.** A question is marked **processed** (greyed/checked) exactly when a saved answer exists for its id in `window.PREPME_ANSWERS`; the progress bar / counter shows answered vs total. This state is derived on each load — no manual marking, nothing in `localStorage`.
+- **Answered links + in-page answer view.** Each question has a stable **id** = `qhash(question text)`. Any id present in `window.PREPME_ANSWERS` renders an "answered" accent and a **View answer** button after *Copy prompt*; clicking it routes to `#a=<id>` and renders the saved answer **in the same page** (the shell also contains the answer-page layout). `answer.data.js` is absent until **anslog** appends the first answer — a missing file is harmless (no links shown), and this skill never creates or edits it.
 - **Filters.** By category, by level, and a "hide processed" toggle.
-- **Self-contained.** No network calls, no CDN; all CSS+JS is inline. Works by opening the file directly in a browser. The only optional companion is the local `answers/answers.js` manifest (loaded if present). Clipboard uses the async Clipboard API with a `document.execCommand('copy')` fallback for `file://`.
+- **Self-contained / offline.** No network calls, no CDN; all CSS+JS is inline in `index.html`; data is loaded from the two local `*.data.js` files via `<script src>`. Clipboard uses the async Clipboard API with a `document.execCommand('copy')` fallback for `file://`.
 
-If the template file is missing, recreate an equivalent self-contained HTML using the same placeholder contract.
+If the `assets/index.html` shell is missing, recreate an equivalent self-contained shell using the
+same data contract: it reads `window.PREPME_QUESTIONS` / `window.PREPME_ANSWERS` and the field
+schema above.
 
 ---
 

@@ -1,35 +1,40 @@
 <!DOCTYPE html>
 <!--
-  Interview-prep template. The prep-interview skill replaces these placeholders:
-    __TITLE__            -> page title string
-    __META__             -> JSON: { role, candidate, language, generated, coverage:{jd:[],cv:[]} }
-    __PROMPT_TEMPLATE__  -> JSON string of the copy prompt; contains {{QUESTION}} and {{FOLLOWUPS}}
-    __DATA__             -> JSON array: [ { category, questions:[ {q, level, source, followups:[]} ] } ]
-    __UI__               -> JSON labels: { progress, of, processed, copy, copied,
-                                           filter_category, filter_level, all, hide_processed,
-                                           why, followups, foundational, core, advanced,
-                                           filter_jd, filter_cv, footer, view_answer, answered }
+  prepme study sheet — static shell. This file is COPIED VERBATIM by the skills; it carries no
+  data of its own. Everything is rendered at runtime from two sibling data files, loaded offline
+  via <script src> (works on file://, no network):
 
-  A question is shown as "processed" (greyed/checked, counted in the progress bar) only when
-  a saved answer exists for it in the manifest below. Clicking "Copy prompt" copies the prompt
-  but does NOT mark the question processed. There is no manual/localStorage progress state.
+    questions.data.js  -> window.PREPME_QUESTIONS  (written by the prepme skill)
+        { title, meta:{ role, candidate, language, generated, coverage:{ jd:[], cv:[] } },
+          ui:{...labels...}, promptTemplate, data:[ { category, questions:[ {q,level,source,followups:[]} ] } ] }
 
-  Saved answers are linked via a separate manifest file `answers/answers.js` (loaded by the
-  page, sets window.PREPME_ANSWERS). The check-in action creates/updates that manifest and the
-  answer pages under `answers/` — it never edits this study sheet. Nothing to fill in here.
+    answer.data.js     -> window.PREPME_ANSWERS    (appended to by the anslog skill; absent until
+        the first answer is saved — a harmless 404). Maps a question id (qhash of the question text)
+        to its saved answer:
+          window.PREPME_ANSWERS["<id>"] = { question, level, why, date,
+                                            answer:"<html>", followups:[ {q, answer:"<html>"} ] }
+
+  This page renders TWO views from those files:
+    - list view   : the study sheet (questions, filters, progress). A question shows as
+                    "processed" (greyed/checked, counted) iff a saved answer exists for its id.
+                    "Copy prompt" copies the filled prompt and does NOT change processed state.
+    - answer view : a saved answer (root card + article + follow-up tree), shown in-page when a
+                    "View answer" link is clicked (routed via #a=<id>). Back returns to the list.
+
+  Neither skill edits this file — prepme writes questions.data.js, anslog appends answer.data.js.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>__TITLE__</title>
+<title></title>
 <style>
   :root{
     --bg:#f7f8fa; --panel:#ffffff; --panel2:#f0f2f5; --line:#e3e6ec; --line2:#eef0f4;
     --txt:#1f2430; --muted:#6b7280; --soft:#8a91a0; --accent:#3b6cf6; --accent-weak:#e8efff;
     --good:#16a34a; --good-weak:#e7f6ec;
     --found:#16a34a; --core:#c2860a; --adv:#dc2626;
-    --tree:#d4d9e2;
+    --tree:#d4d9e2; --code:#f4f6fa;
     --shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   }
   *{box-sizing:border-box}
@@ -131,58 +136,127 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .hidden{display:none!important}
   footer{margin-top:38px;color:var(--soft);font-size:12px;text-align:center}
+
+  /* ===== answer view (scoped under .answerview so it never collides with the list view) ===== */
+  .answerview{max-width:840px;margin:0 auto}
+  .answerview .back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:20px}
+  .answerview .back:hover{color:var(--accent)}
+
+  .answerview .tree{position:relative;margin-left:6px}
+  .answerview .node{position:relative;padding-left:26px}
+  .answerview .node::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1.5px;background:var(--tree)}
+  .answerview .node:last-child::before{bottom:auto;height:24px}
+  .answerview .node::after{content:"";position:absolute;left:0;top:23px;width:18px;height:1.5px;background:var(--tree)}
+
+  .answerview .card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:15px 17px;margin:9px 0;box-shadow:var(--shadow)}
+
+  .answerview .q-row{display:flex;gap:9px;align-items:flex-start}
+  .answerview .node-dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:7px;background:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+  .answerview .q-text{font-weight:700;flex:1;letter-spacing:-.005em}
+  .answerview .lvl{flex:none;font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-top:2px}
+  .answerview .lvl.Foundational{color:var(--found);border-color:#bfe6c9;background:var(--good-weak)}
+  .answerview .lvl.Core{color:var(--core);border-color:#f0dcae;background:#fbf3e0}
+  .answerview .lvl.Advanced{color:var(--adv);border-color:#f3c2c2;background:#fdeaea}
+
+  /* root question card — a touch more prominent; no tree indent/mark */
+  .answerview .card.root{border-left:3px solid var(--accent);padding:18px 20px;margin-top:0}
+  .answerview .card.root .q-text{font-size:18px;line-height:1.45}
+  .answerview .card.root .qlabel{font-size:11px;color:var(--soft);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:9px}
+  .answerview .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .answerview .chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px;color:var(--muted)}
+  .answerview .chip b{color:var(--txt);font-weight:600}
+
+  /* section heading between blocks */
+  .answerview .sec{display:flex;align-items:baseline;gap:10px;margin:34px 0 8px}
+  .answerview .sec .sec-name{font-size:13px;color:var(--soft);text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+
+  /* article typography for answers (main + follow-up) */
+  .answerview .answer{margin-top:4px}
+  .answerview .answer>:first-child{margin-top:0}
+  .answerview .answer h2{font-size:13px;color:var(--soft);text-transform:uppercase;letter-spacing:.06em;font-weight:700;
+    margin:24px 0 6px;padding-bottom:7px;border-bottom:1px solid var(--line2)}
+  .answerview .answer h3{font-size:15.5px;font-weight:700;margin:18px 0 5px}
+  .answerview .answer p{margin:9px 0}
+  .answerview .answer ul,.answerview .answer ol{margin:9px 0;padding-left:23px}
+  .answerview .answer li{margin:4px 0}
+  .answerview .answer strong{font-weight:700}
+  .answerview .answer code{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .answerview .answer pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55}
+  .answerview .answer pre code{background:none;border:none;padding:0}
+  .answerview .answer blockquote{margin:11px 0;padding:6px 14px;border-left:3px solid var(--accent-weak);color:var(--muted)}
+  .answerview .answer table{border-collapse:collapse;width:100%;margin:11px 0;font-size:13.5px}
+  .answerview .answer th,.answerview .answer td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+  .answerview .answer th{background:var(--panel2);font-weight:600}
+
+  /* follow-up cards: same card, muted dot + slightly smaller question */
+  .answerview .card.fu .node-dot{background:var(--soft);box-shadow:0 0 0 3px var(--panel2)}
+  .answerview .card.fu .q-text{font-size:14.5px;font-weight:600}
+  .answerview .card.fu .answer{font-size:14px;color:var(--txt);margin-top:8px;padding-left:18px}
+
+  .answerview footer{margin-top:42px;color:var(--soft);font-size:12px;text-align:center}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1 id="title"></h1>
-    <div class="sub" id="meta"></div>
-  </header>
+  <!-- list view: the study sheet -->
+  <div id="listview">
+    <header>
+      <h1 id="title"></h1>
+      <div class="sub" id="meta"></div>
+    </header>
 
-  <section class="coverage" id="coverage">
-    <div class="cov-cols">
-      <div><h3 id="lbl-jd">JD requirements</h3><div class="chips" id="cov-jd"></div></div>
-      <div><h3 id="lbl-cv">Resume areas</h3><div class="chips" id="cov-cv"></div></div>
-    </div>
-  </section>
+    <section class="coverage" id="coverage">
+      <div class="cov-cols">
+        <div><h3 id="lbl-jd">JD requirements</h3><div class="chips" id="cov-jd"></div></div>
+        <div><h3 id="lbl-cv">Resume areas</h3><div class="chips" id="cov-cv"></div></div>
+      </div>
+    </section>
 
-  <div class="bar">
-    <div class="progwrap">
-      <div class="progtrack"><div class="progfill" id="progfill"></div></div>
-      <div class="progtxt" id="progtxt"></div>
+    <div class="bar">
+      <div class="progwrap">
+        <div class="progtrack"><div class="progfill" id="progfill"></div></div>
+        <div class="progtxt" id="progtxt"></div>
+      </div>
+      <div class="controls">
+        <select id="f-cat"></select>
+        <select id="f-lvl"></select>
+        <label class="toggle"><input type="checkbox" id="f-hide"> <span id="lbl-hide"></span></label>
+      </div>
     </div>
-    <div class="controls">
-      <select id="f-cat"></select>
-      <select id="f-lvl"></select>
-      <label class="toggle"><input type="checkbox" id="f-hide"> <span id="lbl-hide"></span></label>
-    </div>
+
+    <div id="list"></div>
+    <footer id="foot"></footer>
   </div>
 
-  <div id="list"></div>
-  <footer id="foot"></footer>
+  <!-- answer view: a saved answer, rendered in-page (routed via #a=<id>) -->
+  <div class="answerview hidden" id="answerview"></div>
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- Saved-answer manifest, maintained by the check-in action. Optional: if no answers
-     have been checked in yet the file is simply absent (a harmless 404) and no
-     "View answer" links show. The check-in action never edits this study sheet. -->
-<script src="answers/answers.js"></script>
+<!-- Question data (required), written by the prepme skill -> window.PREPME_QUESTIONS -->
+<script src="questions.data.js"></script>
+<!-- Saved-answer data (optional), appended by the anslog skill -> window.PREPME_ANSWERS.
+     Absent until the first answer is saved (a harmless 404); no "View answer" links show. -->
+<script src="answer.data.js"></script>
 <script>
-const META = __META__;
-const DATA = __DATA__;
-const UI = __UI__;
-const PROMPT_TEMPLATE = __PROMPT_TEMPLATE__;
+const Q = window.PREPME_QUESTIONS || {};
+const META = Q.meta || {};
+const DATA = Q.data || [];
+const UI = Q.ui || {};
+const PROMPT_TEMPLATE = Q.promptTemplate || "";
 
-// Saved-answer registry: question id (qhash of the question text) -> answer file path.
-// It lives in answers/answers.js (loaded above, sets window.PREPME_ANSWERS) and is
-// maintained by the check-in action, so this study sheet is never modified by check-in.
-// Absent until the first answer is checked in.
-const ANSWERS = (window.PREPME_ANSWERS) || {};
+// Saved-answer registry: question id (qhash of the question text) -> saved-answer object.
+// It lives in answer.data.js (loaded above, sets window.PREPME_ANSWERS) and is appended to by
+// the anslog skill, so this shell is never modified when an answer is saved. Absent until the
+// first answer is saved.
+const ANSWERS = window.PREPME_ANSWERS || {};
 
 // content-stable id per question, derived only from the question text (FNV-1a, 32-bit).
-// Used to link saved answers via the manifest so links survive reordering/regeneration.
-// The check-in action computes the SAME value by running this function in Node.
+// Used to link saved answers via the registry so links survive reordering/regeneration.
+// The anslog skill computes the SAME value by running this function in Node.
 function qhash(s){
   s = String(s);
   let h = 0x811c9dc5 >>> 0;
@@ -190,8 +264,11 @@ function qhash(s){
   return "q" + h.toString(36);
 }
 
+const lvlLabel = l => ({Foundational:UI.foundational, Core:UI.core, Advanced:UI.advanced}[l] || l);
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
 // ---- header / meta ----
-document.title = document.getElementById("title").textContent = "__TITLE__";
+document.title = document.getElementById("title").textContent = Q.title || "";
 const meta = document.getElementById("meta");
 const bits = [];
 if (META.role) bits.push(`<span><b>${esc(META.role)}</b></span>`);
@@ -216,11 +293,10 @@ const fLvl = document.getElementById("f-lvl");
 fCat.innerHTML = `<option value="">${esc(UI.filter_category||"All categories")}</option>` +
   DATA.map(c=>`<option value="${esc(c.category)}">${esc(c.category)}</option>`).join("");
 const levels = ["Foundational","Core","Advanced"];
-const lvlLabel = l => ({Foundational:UI.foundational, Core:UI.core, Advanced:UI.advanced}[l] || l);
 fLvl.innerHTML = `<option value="">${esc(UI.filter_level||"All levels")}</option>` +
   levels.map(l=>`<option value="${l}">${esc(lvlLabel(l))}</option>`).join("");
 
-// ---- render ----
+// ---- render list ----
 const list = document.getElementById("list");
 function render(){
   list.innerHTML = "";
@@ -240,11 +316,12 @@ function render(){
 
     const tree = document.createElement("div"); tree.className="tree";
     visibleQs.forEach(({q,qi})=>{
-      const answerFile = ANSWERS[qhash(q.q)];
-      const done = !!answerFile; // "processed" iff a saved answer exists for this question
+      const id = qhash(q.q);
+      const answered = !!ANSWERS[id];
+      const done = answered; // "processed" iff a saved answer exists for this question
       const node = document.createElement("div"); node.className="node";
       const card = document.createElement("div");
-      card.className = "card" + (done?" done":"") + (answerFile?" answered":"");
+      card.className = "card" + (done?" done":"") + (answered?" answered":"");
       const fu = (q.followups||[]).map(f=>`<div class="fu-item">${esc(f)}</div>`).join("");
       card.innerHTML =
         `<div class="q-row">`+
@@ -256,7 +333,7 @@ function render(){
         (fu?`<div class="fu"><div class="fu-label">${esc(UI.followups||"Likely follow-ups")}</div><div class="fu-tree">${fu}</div></div>`:``)+
         `<div class="actions">`+
           `<button class="copy-btn" type="button">${esc(UI.copy||"Copy prompt")}</button>`+
-          (answerFile?`<a class="ans-link" href="${esc(answerFile)}" target="_blank" rel="noopener">${esc(UI.view_answer||"View answer")}</a>`:``)+
+          (answered?`<a class="ans-link" href="#a=${esc(id)}">${esc(UI.view_answer||"View answer")}</a>`:``)+
         `</div>`;
       card.querySelector(".copy-btn").addEventListener("click", (e)=>{ copyPrompt(q, e.currentTarget); });
       node.appendChild(card);
@@ -299,14 +376,60 @@ function updateProgress(){
   document.getElementById("progtxt").textContent = tpl.replace("{done}",done).replace("{total}",total);
 }
 
+// ---- answer view (rendered in-page from window.PREPME_ANSWERS) ----
+const listview = document.getElementById("listview");
+const answerview = document.getElementById("answerview");
+
+function renderAnswer(id){
+  const a = ANSWERS[id];
+  if (!a) { showList(); return; }
+  const chips = [];
+  if (a.why)  chips.push(`<span class="chip"><b>${esc(UI.why||"Why")}:</b> ${esc(a.why)}</span>`);
+  if (a.date) chips.push(`<span class="chip">${esc(a.date)}</span>`);
+  const fu = (a.followups||[]).map(f=>
+    `<div class="node"><div class="card fu">`+
+      `<div class="q-row"><span class="node-dot"></span><span class="q-text">${esc(f.q)}</span></div>`+
+      `<div class="answer">${f.answer||""}</div>`+
+    `</div></div>`).join("");
+  answerview.innerHTML =
+    `<a class="back" href="#">&larr; ${esc(UI.back||"Back to study sheet")}</a>`+
+    `<div class="card root">`+
+      `<div class="qlabel">Q</div>`+
+      `<div class="q-row">`+
+        `<span class="q-text">${esc(a.question)}</span>`+
+        (a.level?`<span class="lvl ${esc(a.level)}">${esc(lvlLabel(a.level))}</span>`:``)+
+      `</div>`+
+      (chips.length?`<div class="chips">${chips.join("")}</div>`:``)+
+    `</div>`+
+    `<article class="answer">${a.answer||""}</article>`+
+    (fu?`<div class="sec"><span class="sec-name">${esc(UI.fu_handle||"Follow-ups & how to handle them")}</span></div><div class="tree">${fu}</div>`:``)+
+    `<footer>${esc(UI.answer_footer||"prepme — saved answer.")}</footer>`;
+}
+
+function showList(){
+  answerview.classList.add("hidden");
+  listview.classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+function showAnswer(id){
+  renderAnswer(id);
+  listview.classList.add("hidden");
+  answerview.classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+function route(){
+  const m = location.hash.match(/^#a=(.+)$/);
+  if (m && ANSWERS[decodeURIComponent(m[1])]) showAnswer(decodeURIComponent(m[1]));
+  else showList();
+}
+
 fCat.addEventListener("change", render);
 fLvl.addEventListener("change", render);
 document.getElementById("f-hide").addEventListener("change", render);
-
-function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+window.addEventListener("hashchange", route);
 
 document.getElementById("foot").textContent = (UI.footer||"Generated study sheet — progress saved locally in your browser.");
-render(); updateProgress();
+render(); updateProgress(); route();
 </script>
 </body>
 </html>
