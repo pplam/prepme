@@ -28,7 +28,9 @@ for skill in "${SKILLS[@]}"; do
     fi
     echo "Installing to $dest"
     mkdir -p "$dest"
-    cp -r "$src/SKILL.md" "$src/assets" "$dest/"
+    cp -r "$src/SKILL.md" "$dest/"
+    # Some skills ship data only and have no assets directory (e.g. anslog).
+    [[ -d "$src/assets" ]] && cp -r "$src/assets" "$dest/"
   done
 done
 
