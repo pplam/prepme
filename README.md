@@ -17,6 +17,8 @@
 
 # prepme
 
+[![Try prepme on Socialistic](https://socialistic.ai/api/embed/prepme-95399c)](https://socialistic.ai/zh/skill/prepme-95399c?utm_source=github&utm_medium=readme&utm_campaign=20260614-interview-resume-new-platforms&utm_content=badge)
+
 > Feed it your résumé and the job description. Walk into the interview already knowing the questions.
 
 **prepme** is an agent skill — drop it into any AI agent that supports skills — that turns a **CV** + **JD** into a focused, interactive study sheet of the questions you're most likely to be asked, then hands you a one-click AI deep-dive for each one.
