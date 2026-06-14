@@ -17,7 +17,7 @@
 
 # prepme
 
-[![Try prepme on Socialistic](https://socialistic.ai/api/embed/prepme-95399c)](https://socialistic.ai/skill/prepme-95399c?utm_source=github&utm_medium=readme&utm_content=badge)
+[![Try prepme on Socialistic](https://socialistic.ai/api/embed/prepme-95399c)](https://socialistic.ai/zh/skill/prepme-95399c?utm_source=github&utm_medium=readme&utm_campaign=20260614-interview-resume-new-platforms&utm_content=badge)
 
 > Feed it your résumé and the job description. Walk into the interview already knowing the questions.
 
